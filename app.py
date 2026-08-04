@@ -6,10 +6,12 @@ import requests
 from io import BytesIO
 
 # Page Configuration
-st.set_page_config(
-    page_title="KingAlfred - GoldVision AI",
-    page_icon="👑",
+st.set_page_config(page_title="st.set_page_config(
+    page_title="Goldvision AI",
+    page_icon="https://example.com/your-icon.png",
     layout="centered"
+)
+ "
 )
 
 # App Title & Branding
