@@ -1,53 +1,84 @@
 import streamlit as st
-import openai
 import base64
+from openai import OpenAI
 
-# Page Configuration
-st.set_page_config(page_title="KingAlfred's Goldvision AI", page_icon="📈", layout="centered")
+# ---------------------------------------------------------
+# 1. PAGE CONFIGURATION
+# ---------------------------------------------------------
+st.set_page_config(
+    page_title="Goldvision AI",
+    page_icon="👁️",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-st.title("📈 KingAlfred's Goldvision AI")
-st.write("Upload a chart screenshot for technical analysis and risk management.")
+# ---------------------------------------------------------
+# 2. OPENAI CLIENT INITIALIZATION (SECURE)
+# ---------------------------------------------------------
+# Pulls the API key safely from Streamlit Secrets
+api_key = st.secrets.get("OPENAI_API_KEY")
 
-# API Key Handling (Reads from Streamlit Secrets or Manual Input)
-api_key = st.secrets.get("OPENAI_API_KEY") if "OPENAI_API_KEY" in st.secrets else st.sidebar.text_input("OpenAI API Key", type="password")
+if not api_key:
+    st.error("⚠️ API Key missing! Please add `OPENAI_API_KEY` to your Streamlit Secrets.")
+    st.stop()
 
-uploaded_file = st.file_uploader("Upload Chart Screenshot", type=["png", "jpg", "jpeg"])
+client = OpenAI(api_key=api_key)
 
-def encode_image(image_file):
-    return base64.b64encode(image_file.getvalue()).decode('utf-8')
+# ---------------------------------------------------------
+# 3. APP HEADER & LOGO
+# ---------------------------------------------------------
+# Displays your logo centered at the top
+st.image("logo.png", use_container_width=True)
 
-if uploaded_file and api_key:
-    client = openai.OpenAI(api_key=api_key)
-    base64_image = encode_image(uploaded_file)
+st.title("Goldvision AI")
+st.markdown("##### Upload a chart screenshot for automated technical analysis & risk management.")
+
+# ---------------------------------------------------------
+# 4. CHART UPLOAD & ANALYSIS SECTION
+# ---------------------------------------------------------
+uploaded_file = st.file_uploader(
+    "Upload Chart Screenshot", 
+    type=["jpg", "jpeg", "png"]
+)
+
+if uploaded_file is not None:
+    # Display preview of uploaded chart
+    st.image(uploaded_file, caption="Uploaded Chart Preview", use_container_width=True)
     
-    if st.button("Analyze Chart"):
-        with st.spinner("Analyzing market structure & risk ratios..."):
-            prompt = """
-            You are KingAlfred's Goldvision AI, an expert technical chart analyst.
-            Analyze the attached trading chart screenshot and provide:
-            1. **Market Structure & Trend:** (Break of Structure, Change of Character, Key Support/Resistance).
-            2. **Trade Setup & Entry/Exit:** Identified entry point, stop loss, and take profit targets.
-            3. **Strict Risk Parameters:**
-               - Verify that the Risk-to-Reward ratio is **at least 1:3**.
-               - State position sizing assuming account risk capped strictly between **0.7% and 1.0%**.
-            """
-            
+    if st.button("Analyze Chart", type="primary"):
+        with st.spinner("Analyzing market structure, levels, and trends..."):
             try:
+                # Convert uploaded image to base64 for OpenAI Vision
+                bytes_data = uploaded_file.getvalue()
+                base64_image = base64.b64encode(bytes_data).decode("utf-8")
+                
+                # Send request to OpenAI GPT-4 Vision model
                 response = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
                         {
                             "role": "user",
                             "content": [
-                                {"type": "text", "text": prompt},
-                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                                {
+                                    "type": "text", 
+                                    "text": "Analyze this trading chart. Provide technical structure, trend bias, key support/resistance levels, and risk management recommendations."
+                                },
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+                                }
                             ]
                         }
                     ],
-                    max_tokens=800
+                    max_tokens=600
                 )
-                st.markdown("### 📊 Analysis Results")
+                
+                # Display output
+                st.success("Analysis Complete!")
+                st.markdown("### 📊 Market Breakdown")
                 st.write(response.choices[0].message.content)
+
             except Exception as e:
                 st.error(f"Error analyzing chart: {e}")
+
 
